@@ -1,269 +1,185 @@
-# Obsidian community plugin
+# Obsidian Plugin Spec: Folder Index
 
-## Project overview
+Build an Obsidian community plugin in TypeScript called **Folder Index**. It automatically creates an index note inside every newly created folder, optionally filled from a template note, and can backfill index notes into existing folders on demand.
 
-- Target: Obsidian Community Plugin (TypeScript → bundled JavaScript).
-- Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian.
-- Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
+Deliver three files that work with the official `obsidianmd/obsidian-sample-plugin` build setup: `main.ts`, `settings.ts`, and `manifest.json`. Use only public Obsidian APIs (no `@ts-ignore`, no `app.commands`, no Node or Electron APIs), so the plugin works on desktop and mobile and is suitable for the community plugin directory. The code must compile under the sample plugin's `strict` TypeScript settings.
 
-## Environment & tooling
+---
 
-- Node.js: use current LTS (Node 18+ recommended).
-- **Package manager: npm** (required for this sample - `package.json` defines npm scripts and dependencies).
-- **Bundler: esbuild** (required for this sample - `esbuild.config.mjs` and build scripts depend on it). Alternative bundlers like Rollup or webpack are acceptable for other projects if they bundle all external dependencies into `main.js`.
-- Types: `obsidian` type definitions.
+## 1. Manifest
 
-**Note**: This sample project has specific technical dependencies on npm and esbuild. If you're creating a plugin from scratch, you can choose different tools, but you'll need to replace the build configuration accordingly.
-
-### Install
-
-```bash
-npm install
-```
-
-### Dev (watch)
-
-```bash
-npm run dev
-```
-
-### Production build
-
-```bash
-npm run build
-```
-
-## Linting
-
-- ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.
-- Run `npm run lint` to lint the project.
-- A GitHub Action automatically lints every commit on all branches.
-
-## File & folder conventions
-
-- **Organize code into multiple files**: Split functionality across separate modules rather than putting everything in `main.ts`.
-- Source lives in `src/`. Keep `main.ts` small and focused on plugin lifecycle (loading, unloading, registering commands).
-- **Example file structure**:
-    ```
-    src/
-      main.ts           # Plugin entry point, lifecycle management
-      settings.ts       # Settings interface and defaults
-      commands/         # Command implementations
-        command1.ts
-        command2.ts
-      ui/              # UI components, modals, views
-        modal.ts
-        view.ts
-      utils/           # Utility functions, helpers
-        helpers.ts
-        constants.ts
-      types.ts         # TypeScript interfaces and types
-    ```
-- **Do not commit build artifacts**: Never commit `node_modules/`, `main.js`, or other generated files to version control.
-- Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
-- Generated output should be placed at the plugin root or `dist/` depending on your build setup. Release artifacts must end up at the top level of the plugin folder in the vault (`main.js`, `manifest.json`, `styles.css`).
-
-## Manifest rules (`manifest.json`)
-
-- Must include (non-exhaustive):
-    - `id` (plugin ID; for local dev it should match the folder name)
-    - `name`
-    - `version` (Semantic Versioning `x.y.z`)
-    - `minAppVersion`
-    - `description`
-    - `isDesktopOnly` (boolean)
-    - Optional: `author`, `authorUrl`, `fundingUrl` (string or map)
-- Never change `id` after release. Treat it as stable API.
-- Keep `minAppVersion` accurate when using newer APIs.
-- Canonical requirements are coded here: https://github.com/obsidianmd/obsidian-releases/blob/master/.github/workflows/validate-plugin-entry.yml
-
-## Testing
-
-- Manual install for testing: copy `main.js`, `manifest.json`, `styles.css` (if any) to:
-    ```
-    <Vault>/.obsidian/plugins/<plugin-id>/
-    ```
-- Reload Obsidian and enable the plugin in **Settings → Community plugins**.
-
-## Commands & settings
-
-- Any user-facing commands should be added via `this.addCommand(...)`.
-- If the plugin has configuration, provide a settings tab and sensible defaults.
-- Persist settings using `this.loadData()` / `this.saveData()`.
-- Use stable command IDs; avoid renaming once released.
-
-## Versioning & releases
-
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
-- Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
-- Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
-- After the initial release, follow the process to add/update your plugin in the community catalog as required.
-
-## Security, privacy, and compliance
-
-Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particular:
-
-- Default to local/offline operation. Only make network requests when essential to the feature.
-- No hidden telemetry. If you collect optional analytics or call third-party services, require explicit opt-in and document clearly in `README.md` and in settings.
-- Never execute remote code, fetch and eval scripts, or auto-update plugin code outside of normal releases.
-- Minimize scope: read/write only what's necessary inside the vault. Do not access files outside the vault.
-- Clearly disclose any external services used, data sent, and risks.
-- Respect user privacy. Do not collect vault contents, filenames, or personal information unless absolutely necessary and explicitly consented.
-- Avoid deceptive patterns, ads, or spammy notifications.
-- Register and clean up all DOM, app, and interval listeners using the provided `register*` helpers so the plugin unloads safely.
-
-## UX & copy guidelines (for UI text, commands, settings)
-
-- Prefer sentence case for headings, buttons, and titles.
-- Use clear, action-oriented imperatives in step-by-step copy.
-- Use **bold** to indicate literal UI labels. Prefer "select" for interactions.
-- Use arrow notation for navigation: **Settings → Community plugins**.
-- Keep in-app strings short, consistent, and free of jargon.
-
-## Performance
-
-- Keep startup light. Defer heavy work until needed.
-- Avoid long-running tasks during `onload`; use lazy initialization.
-- Batch disk access and avoid excessive vault scans.
-- Debounce/throttle expensive operations in response to file system events.
-
-## Coding conventions
-
-- TypeScript with `"strict": true` preferred.
-- **Keep `main.ts` minimal**: Focus only on plugin lifecycle (onload, onunload, addCommand calls). Delegate all feature logic to separate modules.
-- **Split large files**: If any file exceeds ~200-300 lines, consider breaking it into smaller, focused modules.
-- **Use clear module boundaries**: Each file should have a single, well-defined responsibility.
-- Bundle everything into `main.js` (no unbundled runtime deps).
-- Avoid Node/Electron APIs if you want mobile compatibility; set `isDesktopOnly` accordingly.
-- Prefer `async/await` over promise chains; handle errors gracefully.
-
-## Mobile
-
-- Where feasible, test on iOS and Android.
-- Don't assume desktop-only behavior unless `isDesktopOnly` is `true`.
-- Avoid large in-memory structures; be mindful of memory and storage constraints.
-
-## Agent do/don't
-
-**Do**
-
-- Add commands with stable IDs (don't rename once released).
-- Provide defaults and validation in settings.
-- Write idempotent code paths so reload/unload doesn't leak listeners or intervals.
-- Use `this.register*` helpers for everything that needs cleanup.
-
-**Don't**
-
-- Introduce network calls without an obvious user-facing reason and documentation.
-- Ship features that require cloud services without clear disclosure and explicit opt-in.
-- Store or transmit vault contents unless essential and consented.
-
-## Common tasks
-
-### Organize code across multiple files
-
-**main.ts** (minimal, lifecycle only):
-
-```ts
-import { Plugin } from 'obsidian';
-import { MySettings, DEFAULT_SETTINGS } from './settings';
-import { registerCommands } from './commands';
-
-export default class MyPlugin extends Plugin {
-	settings!: MySettings;
-
-	async onload() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MySettings>,
-		);
-		registerCommands(this);
-	}
+```json
+{
+  "id": "folder-index",
+  "name": "Folder Index",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Automatically creates an _INDEX file inside every new folder.",
+  "author": "JP",
+  "isDesktopOnly": false
 }
 ```
 
-**settings.ts**:
+The plugin folder name must equal the manifest `id` (`folder-index`).
+
+---
+
+## 2. File layout
+
+| File | Contents |
+|---|---|
+| `settings.ts` | Everything about settings: the `FolderIndexSettings` interface, `DEFAULT_SETTINGS`, the helper functions that interpret settings, and the `FolderIndexSettingTab` class |
+| `main.ts` | The plugin lifecycle, new-folder handling, backfill, template loading, file creation, and the confirmation modal |
+| `manifest.json` | Plugin metadata (above) |
+
+`settings.ts` needs the plugin's type, and `main.ts` needs the settings tab. To avoid a runtime circular import, `settings.ts` must use a **type-only** import: `import type FolderIndexPlugin from './main';`. The build still bundles everything into a single `main.js`.
+
+---
+
+## 3. Settings (`settings.ts`)
+
+Persist with `loadData()` / `saveData()`.
 
 ```ts
-export interface MySettings {
-	enabled: boolean;
-	apiKey: string;
+export interface FolderIndexSettings {
+  fileName: string;
+  templateNotePath: string;
+  excludedFolders: string; // newline-separated paths
 }
 
-export const DEFAULT_SETTINGS: MySettings = {
-	enabled: true,
-	apiKey: '',
+export const DEFAULT_SETTINGS: FolderIndexSettings = {
+  fileName: '_INDEX',
+  templateNotePath: '',
+  excludedFolders: '',
 };
 ```
 
-**commands/index.ts**:
+There is **no** "starting content" text setting. The template note is the only template source.
 
-```ts
-import { Plugin } from 'obsidian';
-import { doSomething } from './my-command';
+### 3.1 Exported helper functions
 
-export function registerCommands(plugin: Plugin) {
-	plugin.addCommand({
-		id: 'do-something',
-		name: 'Do something',
-		callback: () => doSomething(plugin),
-	});
-}
-```
+These are plain functions (not plugin methods) that take the settings object, so all interpretation of settings lives in `settings.ts`.
 
-### Add a command
+- **`getIndexFileName(settings): string`**: trim whitespace, strip illegal filename characters (`\ / : * ? " < > |`), fall back to `_INDEX` if empty, and append `.md` if the name doesn't already end in `.md` (case-insensitive).
+- **`getTemplateNotePath(settings): string`**: trim the value; return `''` if empty; otherwise apply `normalizePath` and append `.md` if missing.
+- **`getExcludedPaths(settings): string[]`**: split on newlines, trim each line, apply `normalizePath`, strip leading and trailing slashes, drop empty lines.
+- **`isExcluded(settings, folder: TFolder): boolean`**: true if `folder.path === excluded` **or** `folder.path.startsWith(excluded + '/')` for any excluded path. Excluding a folder also excludes everything beneath it. Matching is exact and case-sensitive.
+- **`renderTemplate(template: string, folder: TFolder): string`**: replace placeholders (case-insensitive, whitespace inside the braces allowed):
+  - `{{folder}}` becomes `folder.name`
+  - `{{path}}` becomes `folder.path`
 
-```ts
-this.addCommand({
-	id: 'your-command-id',
-	name: 'Do the thing',
-	callback: () => this.doTheThing(),
-});
-```
+### 3.2 Settings tab (`FolderIndexSettingTab extends PluginSettingTab`)
 
-### Persist settings
+`display()` calls `containerEl.empty()` and builds four `Setting` rows in this order:
 
-```ts
-interface MySettings { enabled: boolean }
-const DEFAULT_SETTINGS: MySettings = { enabled: true };
+1. **Index file name** (text input, placeholder is the default). Description: `.md` is added automatically if left off.
+2. **Template note** (text input, placeholder `Templates/Folder index.md`). Description: optional path to an existing note whose content is used for new index files; supports `{{folder}}` and `{{path}}`; if empty, or if the note can't be found, new index files are created empty.
+3. **Excluded folders** (text area, about 5 rows by 40 columns, placeholder `Attachments` and `Templates` on separate lines). Description: one vault-relative folder path per line; excluded folders and everything inside them are skipped, both for new folders and for the backfill.
+4. **Add index file to existing folders** with a **"Run now"** button that calls `this.plugin.backfillIndexFiles()` directly. Description: mentions the user will be asked to confirm first and that existing files are never overwritten.
 
-async onload() {
-  this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MySettings>);
-  await this.saveData(this.settings);
-}
-```
+Each input saves on change via `this.plugin.saveSettings()`.
 
-### Register listeners safely
+---
 
-```ts
-this.registerEvent(
-	this.app.workspace.on('file-open', (f) => {
-		/* ... */
-	}),
-);
-this.registerDomEvent(activeWindow, 'resize', () => {
-	/* ... */
-});
-this.registerInterval(
-	window.setInterval(() => {
-		/* ... */
-	}, 1000),
-);
-```
+## 4. Plugin behavior (`main.ts`)
 
-## Troubleshooting
+Imports from `obsidian`: `App`, `Modal`, `Notice`, `Plugin`, `Setting`, `TFile`, `TFolder`, `normalizePath`. Imports from `./settings`: `DEFAULT_SETTINGS`, `FolderIndexSettingTab`, `FolderIndexSettings`, `getIndexFileName`, `getTemplateNotePath`, `isExcluded`, `renderTemplate`.
 
-- Plugin doesn't load after build: ensure `main.js` and `manifest.json` are at the top level of the plugin folder under `<Vault>/.obsidian/plugins/<plugin-id>/`.
-- Build issues: if `main.js` is missing, run `npm run build` or `npm run dev` to compile your TypeScript source code.
-- Commands not appearing: verify `addCommand` runs after `onload` and IDs are unique.
-- Settings not persisting: ensure `loadData`/`saveData` are awaited and you re-render the UI after changes.
-- Mobile-only issues: confirm you're not using desktop-only APIs; check `isDesktopOnly` and adjust.
+### 4.1 Plugin class
 
-## References
+- Default export `FolderIndexPlugin extends Plugin`.
+- Declare the settings property with an initializer so strict property checks pass: `settings: FolderIndexSettings = { ...DEFAULT_SETTINGS };`
+- `loadSettings()` uses `Object.assign({}, DEFAULT_SETTINGS, await this.loadData())`. Because saved data is merged over the defaults, old saved settings (including a leftover `template` value from earlier versions) are harmless and ignored.
+- `onload()`: load settings, add the settings tab, register the `create` listener (4.2), and add the command (4.5).
 
-- Obsidian sample plugin: https://github.com/obsidianmd/obsidian-sample-plugin
-- API documentation: https://docs.obsidian.md
-- Developer policies: https://docs.obsidian.md/Developer+policies
-- Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
-- Style guide: https://help.obsidian.md/style-guide
+### 4.2 Auto-create on new folders
+
+- Register the vault `create` listener **inside `this.app.workspace.onLayoutReady`**, using `this.registerEvent`, so it is cleaned up on unload and doesn't fire for every existing item at startup.
+- Ignore anything that is not a `TFolder`.
+- For each new folder, call `handleNewFolder(folder)` (fire-and-forget with `void`).
+
+### 4.3 `handleNewFolder(folder)` (delayed re-check)
+
+Folders that arrive from sync tools or from a drag-and-drop copy fire `create` before their contents exist. To avoid colliding with an incoming index file:
+
+1. Wait `NEW_FOLDER_DELAY_MS` (constant, **750 ms**) using a small `sleep` helper.
+2. Confirm the folder still exists at the same path: `this.app.vault.getAbstractFileByPath(folder.path) === folder`. If not, return.
+3. If `folder.children.length > 0`, return. Folders that arrive with contents are never indexed.
+4. Otherwise call `createIndexFile(folder)`.
+
+### 4.4 Template loading and file creation
+
+**`getTemplate(): Promise<string>`**
+
+1. `notePath = getTemplateNotePath(this.settings)`. If empty, return `''`.
+2. Look up the note with `getAbstractFileByPath(notePath)`. If it is a `TFile`, return `await this.app.vault.read(file)`.
+3. Otherwise `console.warn` that the template note was not found and an empty index file will be created, and return `''`.
+
+**`createIndexFile(folder): Promise<boolean>`** (shared by the new-folder handler and the backfill; returns `true` only if a file was created)
+
+1. Return `false` if `isExcluded(this.settings, folder)`.
+2. Build the path with `normalizePath(`${folder.path}/${getIndexFileName(this.settings)}`)`.
+3. Return `false` if `getAbstractFileByPath(path)` finds something (never overwrite).
+4. Compute `content = renderTemplate(await this.getTemplate(), folder)` and call `this.app.vault.create(path, content)`. With no template, `content` is an empty string, so the file is created empty.
+5. Wrap steps 4 in try/catch. On error, `console.error` with the prefix `Folder Index:` and return `false`.
+
+### 4.5 Backfill and command
+
+- One command: id `backfill-index-files`, name **"Add index file to all existing folders"**, callback calls `this.backfillIndexFiles()`.
+- `backfillIndexFiles(): void` is used by **both** the command and the settings "Run now" button:
+  1. Compute `getBackfillTargets()`.
+  2. If there are no targets, show `new Notice('Every eligible folder already has an index file.')` and return (no modal).
+  3. Otherwise open a `ConfirmBackfillModal` showing the count. On confirm, loop through the targets calling `createIndexFile`, then show `new Notice(`Created ${created} index file(s).`)` with the number actually created.
+- `getBackfillTargets(): TFolder[]` returns all folders from `this.app.vault.getAllLoadedFiles()` that satisfy **all** of:
+  - is a `TFolder`
+  - is not the vault root (`!f.isRoot()`)
+  - **is not the config folder and not inside it**: `f.path !== configDir && !f.path.startsWith(configDir + '/')`, where `configDir = this.app.vault.configDir`. Use `configDir`, not a hardcoded `.obsidian`, because users can rename it. This applies **regardless of the exclusion list**.
+  - is not excluded (`!isExcluded(this.settings, f)`)
+  - does not already contain the index file (existence check on the normalized path)
+
+The modal's count must equal what the backfill will actually attempt, which is why both use `getBackfillTargets()`.
+
+### 4.6 Confirmation modal
+
+`ConfirmBackfillModal extends Modal`, constructed with `(app, count, onConfirm)`.
+
+- Heading: **"Add index files?"**
+- Body: "This will create N new index file(s) in existing folders. Existing files are never overwritten." Use correct singular and plural for "file".
+- Two buttons in a `Setting` row:
+  - **Cancel** closes the modal.
+  - A call-to-action button (`.setCta()`) labeled "Create N file(s)" with correct plural. It closes the modal, then awaits `onConfirm`.
+- `onClose()` empties `contentEl`.
+
+---
+
+## 5. Explicit non-goals and known tradeoffs
+
+- Changing the file name or editing the template note does **not** rename, rewrite, or delete previously created index files.
+- Renaming a folder does not update its index heading.
+- Only `{{folder}}` and `{{path}}` are replaced. Syntax from Obsidian's core Templates plugin (`{{date}}`, `{{title}}`) or Templater (`<% %>`) is **not** processed and will appear literally.
+- If the template note path is set but the note can't be found, the plugin silently falls back to an empty index file and only logs a warning to the developer console.
+- The template note path is typed manually (no file picker).
+- A folder that gets a file placed inside it within the 750 ms delay will not receive an index.
+- Empty folders arriving via sync will still be indexed (Obsidian gives no reliable way to distinguish them from UI-created folders).
+- The backfill is not undoable.
+- Exclusions only prevent future index files; they never remove existing ones.
+- Case-insensitive file systems: an existing `_index.md` may not be detected by the existence check, in which case `vault.create` throws and the error is logged and swallowed.
+
+---
+
+## 6. Acceptance tests
+
+Run in a test vault after `npm install` and `npm run dev`, with the plugin enabled:
+
+1. With no template note set, create a folder in the file explorer. After about a second, an **empty** `_INDEX.md` appears inside it.
+2. Create `Templates/Folder index.md` containing `# {{folder}}` and `Path: {{path}}`. Set it as the template note, create a new folder, and confirm the index file contains the folder's name and path.
+3. Set the template note path to a note that doesn't exist, create a folder, and confirm an empty index file is created and a warning appears in the developer console.
+4. Add `Attachments` to Excluded folders, then create `Attachments/2026`. No index file is created in either folder.
+5. Restart Obsidian. Existing folders do **not** suddenly gain index files.
+6. Copy a folder that already contains notes into the vault. No extra index file is created in it.
+7. Run "Add index file to all existing folders". A modal shows the correct count. Cancel does nothing. Confirm creates exactly that many files.
+8. Run the backfill a second time. A notice says every eligible folder already has an index file, and no modal appears.
+9. The config folder (`.obsidian` by default) never receives an index file from the backfill, even when it isn't on the exclusion list.
+10. Change the file name to `README`, create a new folder, and confirm the file is named `README.md`.
+11. The "Run now" button in settings behaves identically to the command palette command.
+12. Disable and re-enable the plugin. New folders are still handled exactly once (no duplicate listeners).
